@@ -16,11 +16,22 @@ git check-ignore -q MODULE.bazel.lock
 # These public mirrors keep the original source and Debian package checksums.
 revision=8cdb94d129914a1d74237930d255f4c75075e4d9
 mirrors="$out/source_mirrors.cfg"
-curl --fail --silent --show-error --retry 3 \
-  "https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/$revision/ci/source_mirrors.cfg" -o "$mirrors"
-printf '%s  %s\n' 2e01494e18c47475b29309b9f6ac1506665b3331498996d24f69d6dfc77eacc8 "$mirrors" | sha256sum -c -
+tools_dir=$(mktemp -d)
+fetch_ci_input() {
+  curl --disable --fail --silent --show-error --retry 3 --max-time 60 \
+    "https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/$revision/ci/$1" -o "$3"
+  printf '%s  %s\n' "$2" "$3" | sha256sum -c -
+}
+fetch_ci_input source_mirrors.cfg 2e01494e18c47475b29309b9f6ac1506665b3331498996d24f69d6dfc77eacc8 "$mirrors"
+# The declared test launcher needs Cosmos tools. Use the same upstream release
+# and member digests as SWSS CI without requiring the cosmo.zip endpoint.
+fetch_ci_input github_sources.py 9c1ad2a9548608d06e49de0c9c119ae19d97ab95cca2505fc1e7e233e62e9b3d "$tools_dir/github_sources.py"
+fetch_ci_input github_sources/cosmos-4.0.2.json 1579ad34288945a28a2d77f96f4764b8910dd3d856d688971e46e63e58119af5 "$tools_dir/cosmos.json"
+python3 "$tools_dir/github_sources.py" --manifest "$tools_dir/cosmos.json" --distdir "$tools_dir/dist" \
+  --cache-dir "$tools_dir/cache" --receipt "$out/github-sources.json"
 
-flags=(--lockfile_mode=update --host_platform="$platform" --platforms="$platform" --downloader_config="$mirrors")
+download_flags=(--downloader_config="$mirrors" --distdir="$tools_dir/dist")
+flags=(--lockfile_mode=update --host_platform="$platform" --platforms="$platform" "${download_flags[@]}")
 artifacts=(//:runtime //:runtime.debug_symbols)
 bazel build "${flags[@]}" --jobs=4 "${artifacts[@]}"
 bazel test "${flags[@]}" --jobs=4 --nocache_test_results --test_output=errors //:util_behavior_test
@@ -37,7 +48,7 @@ grep -Fx 'Monitor-production-utility-PASS 10 groups' "$out/test.log"
 bazel aquery "${flags[@]}" 'mnemonic("CppCompile", //:dhcpmon)' --output=text > "$out/daemon-compile-actions.txt"
 bazel aquery "${flags[@]}" 'mnemonic("DebAssemble", deps(set(//:runtime //:runtime.debug_symbols //:util_behavior_test)))' \
   --output=jsonproto | python3 -c 'import json, sys; sys.exit("unexpected DEB assembly action") if json.load(sys.stdin).get("actions") else None'
-bazel mod graph --lockfile_mode=update --downloader_config="$mirrors" > "$out/module-graph.txt"
+bazel mod graph --lockfile_mode=update "${download_flags[@]}" > "$out/module-graph.txt"
 cp MODULE.bazel.lock "$out/"
 git diff --exit-code HEAD --
 printf 'source=%s\ncheckout=%s\nuserspace=%s\nhost_and_target=%s\n' \
