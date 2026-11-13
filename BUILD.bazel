@@ -15,14 +15,14 @@ cc_binary(
     linkopts = ["-pthread"],
     deps = [
         "@sonic_swss_common//:libswsscommon_shared",
-        "@trixie//libevent-dev:libevent_cc",
-        "@trixie//libevent-dev:libevent_pthreads_cc",
-        "@trixie//libexplain-dev:libexplain_cc",
+        "@dhcpmon_debian//libevent-dev:libevent_cc",
+        "@dhcpmon_debian//libevent-dev:libevent_pthreads_cc",
+        "@dhcpmon_debian//libexplain-dev:libexplain_cc",
         "@jsoncpp//:jsoncpp",
-        "@trixie//libboost-thread1.83-dev:libboost_thread_cc",
-        "@trixie//libboost-system1.83-dev:libboost_system_cc",
-        "@trixie//libhiredis-dev:libhiredis_cc",
-        "@trixie//libpcap0.8-dev:libpcap_cc",
+        "@dhcpmon_debian//libboost-thread1.83-dev:libboost_thread_cc",
+        "@dhcpmon_debian//libboost-system1.83-dev:libboost_system_cc",
+        "@dhcpmon_debian//libhiredis-dev:libhiredis_cc",
+        "@dhcpmon_debian//libpcap0.8-dev:libpcap_cc",
     ],
 )
 sonic_deploy_tar(
@@ -37,17 +37,25 @@ exports_files(["debian/control", "debian/changelog"])
 runtime_packages(
     name = "monitor_metadata",
     packages = {"sonic-dhcpmon": "//:runtime"},
-    control = "//:debian/control", changelog = "//:debian/changelog",
-    module_name = "sonic-dhcpmon", architecture = "amd64",
+    control = "//:debian/control",
+    changelog = "//:debian/changelog",
+    required_paths = {"sonic-dhcpmon": ["usr/sbin/dhcpmon"]},
+    # The shared metadata rule supplies libc, libgcc and libstdc++ for the target.
     apt_packages = {
-        "@monitor_metadata_debian//" + name + ":data": "@monitor_metadata_debian//" + name + ":control"
-        for name in ["libc6", "libgcc-s1", "libstdc++6", "libevent-2.1-7t64", "libevent-pthreads-2.1-7t64", "libexplain51t64", "libhiredis1.1.0"]
-    } | {"@trixie//libpcap0.8t64:data": "@trixie//libpcap0.8t64:control"},
+        "@dhcpmon_debian//" + name + ":data": "@dhcpmon_debian//" + name + ":control"
+        for name in [
+            "libevent-2.1-7t64",
+            "libevent-pthreads-2.1-7t64",
+            "libexplain51t64",
+            "libhiredis1.1.0",
+            "libpcap0.8t64",
+        ]
+    },
     dependencies = ["@sonic_swss_common//:runtime_packages.json"],
     visibility = ["//visibility:public"],
 )
 
-cc_binary(name = "util_behavior_binary", testonly = True, srcs = ["tests/util_behavior_test.cpp", "src/util.cpp"] + glob(["src/*.h"]), copts = ["-std=c++17", "-UNDEBUG"], deps = ["@jsoncpp//:jsoncpp", "@sonic_swss_common//:libswsscommon_shared", "@trixie//libexplain-dev:libexplain_cc", "@trixie//libevent-dev:libevent_cc"], visibility = ["//visibility:public"])
+cc_binary(name = "util_behavior_binary", testonly = True, srcs = ["tests/util_behavior_test.cpp", "src/util.cpp"] + glob(["src/*.h"]), copts = ["-std=c++17", "-UNDEBUG"], deps = ["@jsoncpp//:jsoncpp", "@sonic_swss_common//:libswsscommon_shared", "@dhcpmon_debian//libexplain-dev:libexplain_cc", "@dhcpmon_debian//libevent-dev:libevent_cc"], visibility = ["//visibility:public"])
 
 # Run with declared target loader/libraries, not an evidence-only host image.
 native_runtime_test(
@@ -56,7 +64,7 @@ native_runtime_test(
     runtime_payloads = [
         "@sonic_swss_common//dist:libswsscommon_pkg",
         "@sonic_swss_common//tools/bazel/runtime:test_runtime",
-        "@trixie//libexplain-dev",
-        "@trixie//libevent-dev",
+        "@dhcpmon_debian//libexplain-dev",
+        "@dhcpmon_debian//libevent-dev",
     ],
 )

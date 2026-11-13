@@ -48,7 +48,7 @@ jobs:
           repository-cache: true
           cache-save: ${{ github.event_name == 'push' }}
 
-      - name: Build, test and check the installed binary and symbols
+      - name: Build and verify the daemon, debug symbols and Debian metadata
         id: build
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

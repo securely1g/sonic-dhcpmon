@@ -32,21 +32,36 @@ python3 "$tools_dir/github_sources.py" --manifest "$tools_dir/cosmos.json" --dis
 
 download_flags=(--downloader_config="$mirrors" --distdir="$tools_dir/dist")
 flags=(--lockfile_mode=update --host_platform="$platform" --platforms="$platform" "${download_flags[@]}")
-artifacts=(//:runtime //:runtime.debug_symbols)
-bazel build "${flags[@]}" --jobs=4 "${artifacts[@]}"
+archives=(//:runtime //:runtime.debug_symbols)
+bazel build "${flags[@]}" --jobs=4 "${archives[@]}" //:monitor_metadata
 bazel test "${flags[@]}" --jobs=4 --nocache_test_results --test_output=errors //:util_behavior_test
 
-for i in 0 1; do
-  target=${artifacts[$i]}
+for target in "${archives[@]}"; do
   file=$(bazel cquery "${flags[@]}" --output=files "$target")
   test -f "$file"
   cp "$file" "$out/${target#//:}.tar"
 done
 python3 .github/scripts/check_dhcpmon_artifacts.py --arch "$arch" "$out/runtime.tar" "$out/runtime.debug_symbols.tar" > "$out/debug-pair.json"
+metadata=$(bazel cquery "${flags[@]}" --output=files //:monitor_metadata)
+cp "$metadata" "$out/monitor_metadata.json"
+# Inspect the target package trees declared by runtime_packages, never the runner's dpkg database.
+bazel cquery "${flags[@]}" //:monitor_metadata --output=starlark \
+  --starlark:expr='"\n".join([f.path for k, p in providers(target).items() if k.endswith("%RuntimePackagesInfo") for f in p.trees.to_list()])' \
+  > "$tools_dir/package-trees"
+python3 .github/scripts/check_dhcpmon_metadata.py "$arch" "$out/runtime.tar" "$out/monitor_metadata.json" \
+  "$tools_dir/package-trees" > "$out/metadata-verification.json"
+# Record the actual published inputs so both jobs can be compared with infra.
+execroot=$(bazel info execution_root)
+for name in apt.lock requests sources; do
+  label="@sonic_build_infra//apt:$name.json"
+  file=$(bazel cquery "${flags[@]}" --output=files "$label")
+  checksum=$(sha256sum "$execroot/$file")
+  printf '%s  %s\n' "${checksum%% *}" "$label"
+done > "$out/infra-apt-inputs.txt"
 cp bazel-testlogs/util_behavior_test/test.{log,xml} "$out/"
 grep -Fx 'Monitor-production-utility-PASS 10 groups' "$out/test.log"
 bazel aquery "${flags[@]}" 'mnemonic("CppCompile", //:dhcpmon)' --output=text > "$out/daemon-compile-actions.txt"
-bazel aquery "${flags[@]}" 'mnemonic("DebAssemble", deps(set(//:runtime //:runtime.debug_symbols //:util_behavior_test)))' \
+bazel aquery "${flags[@]}" 'mnemonic("DebAssemble", deps(set(//:runtime //:runtime.debug_symbols //:monitor_metadata //:util_behavior_test)))' \
   --output=jsonproto | python3 -c 'import json, sys; sys.exit("unexpected DEB assembly action") if json.load(sys.stdin).get("actions") else None'
 bazel mod graph --lockfile_mode=update "${download_flags[@]}" > "$out/module-graph.txt"
 cp MODULE.bazel.lock "$out/"
