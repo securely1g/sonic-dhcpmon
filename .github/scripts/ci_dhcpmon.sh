@@ -51,7 +51,8 @@ bazel cquery "${flags[@]}" //:monitor_metadata --output=starlark \
 python3 .github/scripts/check_dhcpmon_metadata.py "$arch" "$out/runtime.tar" "$out/monitor_metadata.json" \
   "$tools_dir/package-trees" > "$out/metadata-verification.json"
 # Record the actual published inputs so both jobs can be compared with infra.
-execroot=$(bazel info execution_root)
+# External cquery paths are relative to the execution root, which owns bazel-out.
+execroot=$(dirname "$(realpath bazel-out)")
 for name in apt.lock requests sources; do
   label="@sonic_build_infra//apt:$name.json"
   file=$(bazel cquery "${flags[@]}" --output=files "$label")
