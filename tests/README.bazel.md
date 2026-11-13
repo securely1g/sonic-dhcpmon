@@ -10,6 +10,6 @@ full packet forwarding, database health or dual-ToR acceptance.
 
 The published infrastructure native_runtime_test wrapper uses declared target
 loader/library payloads, not an absolute host path or locally built image.
-No ARM/cross runtime result is claimed. Historical Nov1 local image validation
-and negative/restoration controls do not establish a fresh pass for the updated
-published graph or declared-runtime wrapper.
+The PR workflow runs this target without cached test results on native AMD64
+and ARM64 Debian Trixie. See each architecture's test log for the result on
+the current commit. Neither check exercises a cross-architecture runtime.

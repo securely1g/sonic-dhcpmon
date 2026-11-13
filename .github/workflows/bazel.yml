@@ -3,7 +3,7 @@ name: Bazel
 on:
   pull_request:
   push:
-    branches: [master, ci/dhcpmon]
+    branches: [master]
 
 permissions:
   contents: read
@@ -46,18 +46,20 @@ jobs:
         with:
           bazelisk-version: 1.29.0
           repository-cache: true
-          cache-save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+          cache-save: ${{ github.event_name == 'push' }}
 
       - name: Build, test and check the installed binary and symbols
+        id: build
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TARGET_ARCH: ${{ matrix.arch }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash .github/scripts/ci_dhcpmon.sh "$RUNNER_TEMP/dhcpmon-$TARGET_ARCH"
+          echo "directory=$RUNNER_TEMP/dhcpmon-$TARGET_ARCH" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dhcpmon-${{ matrix.arch }}
-          path: ${{ runner.temp }}/dhcpmon-${{ matrix.arch }}/
+          path: ${{ steps.build.outputs.directory }}/
           if-no-files-found: error

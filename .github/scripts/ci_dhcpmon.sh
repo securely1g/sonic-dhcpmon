@@ -37,7 +37,7 @@ grep -Fx 'Monitor-production-utility-PASS 10 groups' "$out/test.log"
 bazel aquery "${flags[@]}" 'mnemonic("CppCompile", //:dhcpmon)' --output=text > "$out/daemon-compile-actions.txt"
 bazel aquery "${flags[@]}" 'mnemonic("DebAssemble", deps(set(//:runtime //:runtime.debug_symbols //:util_behavior_test)))' \
   --output=jsonproto | python3 -c 'import json, sys; sys.exit("unexpected DEB assembly action") if json.load(sys.stdin).get("actions") else None'
-bazel mod graph "${flags[@]}" > "$out/module-graph.txt"
+bazel mod graph --lockfile_mode=update --downloader_config="$mirrors" > "$out/module-graph.txt"
 cp MODULE.bazel.lock "$out/"
 git diff --exit-code HEAD --
 printf 'source=%s\ncheckout=%s\nuserspace=%s\nhost_and_target=%s\n' \

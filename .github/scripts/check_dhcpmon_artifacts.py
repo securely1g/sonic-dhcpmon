@@ -36,7 +36,8 @@ def readelf(option, path):
 def build_id(path, arch):
     with path.open("rb") as f:
         header = f.read(20)
-    if header[:6] != b"\x7fELF\x02\x01" or int.from_bytes(header[18:20], "little") != ELF_MACHINES[arch]:
+    machine = int.from_bytes(header[18:20], "little")
+    if len(header) != 20 or header[:6] != b"\x7fELF\x02\x01" or machine != ELF_MACHINES[arch]:
         raise ValueError(f"{path.name}: expected a little-endian {arch} ELF64 file")
     ids = re.findall(r"Build ID: ([0-9a-f]+)", readelf("--notes", path))
     if len(ids) != 1:
@@ -61,7 +62,9 @@ def verify(runtime_tar, debug_tar, tmp, arch):
         raise ValueError("detached symbols lack DWARF debug information")
 
     link = tmp / "debuglink"
-    subprocess.run(["objcopy", f"--dump-section=.gnu_debuglink={link}", binary, tmp / "copy"], check=True)
+    # The section contents are architecture-independent; also allow checking an ARM tar on x86.
+    subprocess.run(["objcopy", "-I", "elf64-little", f"--dump-section=.gnu_debuglink={link}",
+                    binary, tmp / "copy"], check=True)
     name = PurePosixPath(debug_member).name.encode() + b"\0"
     checksum = zlib.crc32(symbols.read_bytes())
     expected_link = name.ljust((len(name) + 3) & ~3, b"\0") + checksum.to_bytes(4, "little")
