@@ -22,7 +22,7 @@ cc_binary(
         "@trixie//libboost-thread1.83-dev:libboost_thread_cc",
         "@trixie//libboost-system1.83-dev:libboost_system_cc",
         "@trixie//libhiredis-dev:libhiredis_cc",
-        "@libpcap//:libpcap",
+        "@trixie//libpcap0.8-dev:libpcap_cc",
     ],
 )
 sonic_deploy_tar(
@@ -39,12 +39,15 @@ runtime_packages(
     packages = {"sonic-dhcpmon": "//:runtime"},
     control = "//:debian/control", changelog = "//:debian/changelog",
     module_name = "sonic-dhcpmon", architecture = "amd64",
-    apt_packages = {"@monitor_metadata_debian//" + name + ":data": "@monitor_metadata_debian//" + name + ":control" for name in ['libc6', 'libgcc-s1', 'libstdc++6', 'libevent-2.1-7t64', 'libevent-pthreads-2.1-7t64', 'libexplain51t64', 'libhiredis1.1.0']},
+    apt_packages = {
+        "@monitor_metadata_debian//" + name + ":data": "@monitor_metadata_debian//" + name + ":control"
+        for name in ["libc6", "libgcc-s1", "libstdc++6", "libevent-2.1-7t64", "libevent-pthreads-2.1-7t64", "libexplain51t64", "libhiredis1.1.0"]
+    } | {"@trixie//libpcap0.8t64:data": "@trixie//libpcap0.8t64:control"},
     dependencies = ["@sonic_swss_common//:runtime_packages.json"],
     visibility = ["//visibility:public"],
 )
 
-cc_binary(name = "util_behavior_binary", testonly = True, srcs = ["tests/util_behavior_test.cpp", "src/util.cpp"] + glob(["src/*.h"]), copts = ["-std=c++17", "-UNDEBUG"], deps = ["@jsoncpp//:jsoncpp", "@libpcap//:libpcap", "@sonic_swss_common//:libswsscommon_shared", "@trixie//libexplain-dev:libexplain_cc", "@trixie//libevent-dev:libevent_cc"], visibility = ["//visibility:public"])
+cc_binary(name = "util_behavior_binary", testonly = True, srcs = ["tests/util_behavior_test.cpp", "src/util.cpp"] + glob(["src/*.h"]), copts = ["-std=c++17", "-UNDEBUG"], deps = ["@jsoncpp//:jsoncpp", "@sonic_swss_common//:libswsscommon_shared", "@trixie//libexplain-dev:libexplain_cc", "@trixie//libevent-dev:libevent_cc"], visibility = ["//visibility:public"])
 
 # Run with declared target loader/libraries, not an evidence-only host image.
 native_runtime_test(

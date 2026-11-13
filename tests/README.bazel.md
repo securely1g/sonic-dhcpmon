@@ -1,7 +1,7 @@
 # Production utility behavior test
 
 `//:util_behavior_test` compiles the actual `src/util.cpp` and uses source Common,
-canonical jsoncpp/libpcap and pinned external foundations. Assertions remain on
+jsoncpp and pinned external foundations. Only the daemon uses libpcap. Assertions remain on
 in optimized builds (`-UNDEBUG`). Ten groups cover checksum lengths0..65, carry
 folds, IPv4/IPv6 pseudoheaders and zero encoding, parsing boundaries, address
 formatting, counter keys and legacy serialization. Empty application-state globals

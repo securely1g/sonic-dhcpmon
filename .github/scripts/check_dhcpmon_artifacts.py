@@ -50,6 +50,8 @@ def verify(runtime_tar, debug_tar, tmp, arch):
     binary = tmp / "dhcpmon"
     copy_payload(runtime_tar, installed, 0o755, binary)
     identifier = build_id(binary, arch)
+    if not re.search(r"\(NEEDED\).*\[libpcap\.so\.0\.8\]", readelf("--dynamic", binary)):
+        raise ValueError("runtime does not link the declared Trixie libpcap.so.0.8")
     debug_member = f"usr/lib/debug/.build-id/{identifier[:2]}/{identifier[2:]}.debug"
     symbols = tmp / "dhcpmon.debug"
     copy_payload(debug_tar, debug_member, 0o644, symbols)
