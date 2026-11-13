@@ -3,7 +3,8 @@ bazel_dep(name = "rules_cc", version = "0.2.20")
 bazel_dep(name = "sonic-build-infra", version = "0.0.26-51c838da6ff57295fde6e0bc3807841cb31a8568", repo_name = "sonic_build_infra")
 bazel_dep(name = "sonic-swss-common", version = "0.0.9-334389eae54afd1f4f5ee69f89c3a7ad2062ee61", repo_name = "sonic_swss_common")
 bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.16")
-bazel_dep(name = "libpcap", version = "1.10.5.bcr.3")
+# Same libpcap 1.10.5 sources; this BCR recipe updates the parser build tools.
+bazel_dep(name = "libpcap", version = "1.10.5.bcr.4")
 apt = use_extension("@rules_distroless//apt:extensions.bzl", "apt")
 # Use the packages that own the unversioned shared-library links in objects.mk.
 apt.install(
