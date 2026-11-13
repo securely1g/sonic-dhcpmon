@@ -1,9 +1,8 @@
 name: Bazel
 
 on:
-  pull_request:
   push:
-    branches: [master]
+    branches: [codex/validate-dhcpmon-shared-lock-20261113]
 
 permissions:
   contents: read
@@ -46,7 +45,7 @@ jobs:
         with:
           bazelisk-version: 1.29.0
           repository-cache: true
-          cache-save: ${{ github.event_name == 'push' }}
+          cache-save: false
 
       - name: Build and verify the daemon, debug symbols and Debian metadata
         id: build
