@@ -15,11 +15,13 @@ cc_binary(
     linkopts = ["-pthread"],
     deps = [
         "@sonic_swss_common//:libswsscommon_shared",
-        "@trixie//libevent-dev:libevent",
-        "@trixie//libexplain-dev:libexplain",
+        "@trixie//libevent-dev:libevent_cc",
+        "@trixie//libevent-dev:libevent_pthreads_cc",
+        "@trixie//libexplain-dev:libexplain_cc",
         "@jsoncpp//:jsoncpp",
-        "@trixie//libboost-thread-dev:libboost-thread",
-        "@trixie//libboost-system-dev:libboost-system",
+        "@trixie//libboost-thread1.83-dev:libboost_thread_cc",
+        "@trixie//libboost-system1.83-dev:libboost_system_cc",
+        "@trixie//libhiredis-dev:libhiredis_cc",
         "@libpcap//:libpcap",
     ],
 )
@@ -42,7 +44,7 @@ runtime_packages(
     visibility = ["//visibility:public"],
 )
 
-cc_binary(name = "util_behavior_binary", testonly = True, srcs = ["tests/util_behavior_test.cpp", "src/util.cpp"] + glob(["src/*.h"]), copts = ["-std=c++17", "-UNDEBUG"], deps = ["@jsoncpp//:jsoncpp", "@libpcap//:libpcap", "@sonic_swss_common//:libswsscommon_shared", "@trixie//libexplain-dev:libexplain", "@trixie//libevent-dev:libevent"], visibility = ["//visibility:public"])
+cc_binary(name = "util_behavior_binary", testonly = True, srcs = ["tests/util_behavior_test.cpp", "src/util.cpp"] + glob(["src/*.h"]), copts = ["-std=c++17", "-UNDEBUG"], deps = ["@jsoncpp//:jsoncpp", "@libpcap//:libpcap", "@sonic_swss_common//:libswsscommon_shared", "@trixie//libexplain-dev:libexplain_cc", "@trixie//libevent-dev:libevent_cc"], visibility = ["//visibility:public"])
 
 # Run with declared target loader/libraries, not an evidence-only host image.
 native_runtime_test(

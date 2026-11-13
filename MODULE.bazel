@@ -5,7 +5,21 @@ bazel_dep(name = "sonic-swss-common", version = "0.0.9-334389eae54afd1f4f5ee69f8
 bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.16")
 bazel_dep(name = "libpcap", version = "1.10.5.bcr.3")
 apt = use_extension("@rules_distroless//apt:extensions.bzl", "apt")
-apt.install(dependency_set = "trixie", packages = ["libexplain-dev (= 1.4.D001-16) [amd64]", "libexplain-dev (= 1.4.D001-16) [arm64]"], suites = ["trixie", "trixie-updates", "trixie-security"])
+# Use the packages that own the unversioned shared-library links in objects.mk.
+apt.install(
+    dependency_set = "trixie",
+    packages = [
+        name + ":" + arch + " (= " + version + ")"
+        for arch in ["amd64", "arm64"]
+        for name, version in {
+            "libboost-system1.83-dev": "1.83.0-4.2",
+            "libboost-thread1.83-dev": "1.83.0-4.2",
+            "libevent-dev": "2.1.12-stable-10+b1",
+            "libexplain-dev": "1.4.D001-16",
+        }.items()
+    ],
+    suites = ["trixie", "trixie-updates", "trixie-security"],
+)
 use_repo(apt, "trixie")
 
 bazel_dep(name = "jsoncpp", version = "1.9.5")
