@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Run from the source checkout on a native AMD64 Debian Trixie runner.
+# Run from the source checkout on a native Debian Trixie runner.
 set -euo pipefail
 out=${1:?pass an artifact directory outside the checkout}
 mkdir -p "$out"
-platform=@sonic_build_infra//platforms:x86_64_trixie
+arch=$(dpkg --print-architecture)
+case "$arch:$(uname -m)" in
+  amd64:x86_64) platform=@sonic_build_infra//platforms:x86_64_trixie ;;
+  arm64:aarch64) platform=@sonic_build_infra//platforms:aarch64_trixie ;;
+  *) echo "Unsupported native host: $arch / $(uname -m)" >&2; exit 1 ;;
+esac
 test "$(bazel --version)" = "bazel $(cat .bazelversion)"
 test ! -e MODULE.bazel.lock
 git check-ignore -q MODULE.bazel.lock
@@ -26,7 +31,7 @@ for i in 0 1; do
   test -f "$file"
   cp "$file" "$out/${target#//:}.tar"
 done
-python3 .github/scripts/check_dhcpmon_artifacts.py "$out/runtime.tar" "$out/runtime.debug_symbols.tar" > "$out/debug-pair.json"
+python3 .github/scripts/check_dhcpmon_artifacts.py --arch "$arch" "$out/runtime.tar" "$out/runtime.debug_symbols.tar" > "$out/debug-pair.json"
 cp bazel-testlogs/util_behavior_test/test.{log,xml} "$out/"
 grep -Fx 'Monitor-production-utility-PASS 10 groups' "$out/test.log"
 bazel aquery "${flags[@]}" 'mnemonic("CppCompile", //:dhcpmon)' --output=text > "$out/daemon-compile-actions.txt"

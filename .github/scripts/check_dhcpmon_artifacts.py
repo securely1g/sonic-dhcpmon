@@ -1,4 +1,4 @@
-"""Verify the installed AMD64 dhcpmon executable and its detached debug symbols."""
+"""Verify the installed dhcpmon executable and its detached debug symbols."""
 
 import argparse
 import json
@@ -10,6 +10,9 @@ import subprocess
 import tarfile
 import tempfile
 import zlib
+
+
+ELF_MACHINES = {"amd64": 62, "arm64": 183}  # EM_X86_64, EM_AARCH64
 
 
 def copy_payload(archive_path, expected, mode, dest):
@@ -30,26 +33,26 @@ def readelf(option, path):
                                    env={**os.environ, "LC_ALL": "C"})
 
 
-def build_id(path):
+def build_id(path, arch):
     with path.open("rb") as f:
         header = f.read(20)
-    if header[:6] != b"\x7fELF\x02\x01" or header[18:20] != b"\x3e\x00":
-        raise ValueError(f"{path.name}: expected a little-endian AMD64 ELF64 file")
+    if header[:6] != b"\x7fELF\x02\x01" or int.from_bytes(header[18:20], "little") != ELF_MACHINES[arch]:
+        raise ValueError(f"{path.name}: expected a little-endian {arch} ELF64 file")
     ids = re.findall(r"Build ID: ([0-9a-f]+)", readelf("--notes", path))
     if len(ids) != 1:
         raise ValueError(f"{path.name}: expected exactly one GNU build ID")
     return ids[0]
 
 
-def verify(runtime_tar, debug_tar, tmp):
+def verify(runtime_tar, debug_tar, tmp, arch):
     installed = "usr/sbin/dhcpmon"
     binary = tmp / "dhcpmon"
     copy_payload(runtime_tar, installed, 0o755, binary)
-    identifier = build_id(binary)
+    identifier = build_id(binary, arch)
     debug_member = f"usr/lib/debug/.build-id/{identifier[:2]}/{identifier[2:]}.debug"
     symbols = tmp / "dhcpmon.debug"
     copy_payload(debug_tar, debug_member, 0o644, symbols)
-    if build_id(symbols) != identifier:
+    if build_id(symbols, arch) != identifier:
         raise ValueError("runtime and symbols have different GNU build IDs")
     dwarf = r"\]\s+\.debug_info\s+"
     if re.search(dwarf, readelf("--section-headers", binary)):
@@ -64,14 +67,15 @@ def verify(runtime_tar, debug_tar, tmp):
     expected_link = name.ljust((len(name) + 3) & ~3, b"\0") + checksum.to_bytes(4, "little")
     if not link.is_file() or link.read_bytes() != expected_link:
         raise ValueError("runtime .gnu_debuglink does not match the shipped symbol filename and CRC")
-    return {"runtime": installed, "debug_file": debug_member, "architecture": "amd64",
+    return {"runtime": installed, "debug_file": debug_member, "architecture": arch,
             "build_id": identifier, "debuglink_crc32": f"{checksum:08x}"}
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--arch", choices=ELF_MACHINES, required=True)
     parser.add_argument("runtime_tar", type=Path)
     parser.add_argument("debug_tar", type=Path)
     args = parser.parse_args()
     with tempfile.TemporaryDirectory() as directory:
-        print(json.dumps(verify(args.runtime_tar, args.debug_tar, Path(directory)), indent=2))
+        print(json.dumps(verify(args.runtime_tar, args.debug_tar, Path(directory), args.arch), indent=2))
