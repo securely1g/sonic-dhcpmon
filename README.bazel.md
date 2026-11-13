@@ -15,5 +15,11 @@ bazel build --jobs=2 --local_resources=memory=4096 //:runtime //:runtime.debug_s
 Inspect the configured graph before execution. See `tests/README.bazel.md` for
 bounded production-utility assertions and their limits. Full monitor health,
 dual-ToR, live forwarding, ARM, installed-image startup and service deployment
-are not established by this unit test. Fresh publication validation is pending;
-historical Nov1 integration evidence applies to its frozen graph only.
+are not established by this unit test.
+
+The **Bazel DHCP monitor (AMD64)** PR check uses native Debian Trixie and sets
+both the host and target platform to `@sonic_build_infra//platforms:x86_64_trixie`.
+It builds the runtime and detached debug TARs, checks that the symbols match
+the installed `/usr/sbin/dhcpmon`, and runs `//:util_behavior_test`. The
+`dhcpmon-amd64` CI artifact contains both TARs, their checksums, the build ID,
+test results, and the generated Bazel module lock and graph.
