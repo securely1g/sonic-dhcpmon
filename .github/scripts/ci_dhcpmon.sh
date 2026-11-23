@@ -14,7 +14,7 @@ test ! -e MODULE.bazel.lock
 git check-ignore -q MODULE.bazel.lock
 
 # These public mirrors keep the original source and Debian package checksums.
-revision=b5907cdbdf6489f248cdd79eb4c6e2fdf7445eb9
+revision=e7ee462aaa8fbd137ea2187f175506e308d81dcb
 mirrors="$out/source_mirrors.cfg"
 tools_dir=$(mktemp -d)
 fetch_ci_input() {
