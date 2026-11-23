@@ -14,7 +14,7 @@ test ! -e MODULE.bazel.lock
 git check-ignore -q MODULE.bazel.lock
 
 # These public mirrors keep the original source and Debian package checksums.
-revision=8cdb94d129914a1d74237930d255f4c75075e4d9
+revision=b5907cdbdf6489f248cdd79eb4c6e2fdf7445eb9
 mirrors="$out/source_mirrors.cfg"
 tools_dir=$(mktemp -d)
 fetch_ci_input() {
@@ -22,10 +22,10 @@ fetch_ci_input() {
     "https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/$revision/ci/$1" -o "$3"
   printf '%s  %s\n' "$2" "$3" | sha256sum -c -
 }
-fetch_ci_input source_mirrors.cfg 2e01494e18c47475b29309b9f6ac1506665b3331498996d24f69d6dfc77eacc8 "$mirrors"
+fetch_ci_input source_mirrors.cfg c28e6882aa9ebed84fd32586112e5fbfe9684af4e4aaa9942170919a3cbd308e "$mirrors"
 # The declared test launcher needs Cosmos tools. Use the same upstream release
 # and member digests as SWSS CI without requiring the cosmo.zip endpoint.
-fetch_ci_input github_sources.py 9c1ad2a9548608d06e49de0c9c119ae19d97ab95cca2505fc1e7e233e62e9b3d "$tools_dir/github_sources.py"
+fetch_ci_input github_sources.py 06836c38c56aa0e77e1f7adac68b6463f8f1e920e0beb000061cec5b7f5ec1f2 "$tools_dir/github_sources.py"
 fetch_ci_input github_sources/cosmos-4.0.2.json 1579ad34288945a28a2d77f96f4764b8910dd3d856d688971e46e63e58119af5 "$tools_dir/cosmos.json"
 python3 "$tools_dir/github_sources.py" --manifest "$tools_dir/cosmos.json" --distdir "$tools_dir/dist" \
   --cache-dir "$tools_dir/cache" --receipt "$out/github-sources.json"
