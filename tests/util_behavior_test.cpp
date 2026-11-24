@@ -7,9 +7,11 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <vector>
 std::shared_ptr<swss::DBConnector> mStateDbPtr;
 std::shared_ptr<swss::Table> mStateDbMuxTablePtr;
+std::mutex mux_table_lock;
 std::shared_ptr<swss::DBConnector> mConfigDbPtr;
 bool dual_tor_mode = false;
 std::string downstream_ifname = "Vlan1000";
