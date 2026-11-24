@@ -14,12 +14,12 @@ test ! -e MODULE.bazel.lock
 git check-ignore -q MODULE.bazel.lock
 
 # These public mirrors keep the original source and Debian package checksums.
-revision=e7ee462aaa8fbd137ea2187f175506e308d81dcb
+revision=e73724fb0134430da236e501e0770fe4d273782b
 mirrors="$out/source_mirrors.cfg"
 tools_dir=$(mktemp -d)
 fetch_ci_input() {
   curl --disable --fail --silent --show-error --retry 3 --max-time 60 \
-    "https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/$revision/ci/$1" -o "$3"
+    "https://raw.githubusercontent.com/sonic-net/sonic-bazel-registry/$revision/ci/$1" -o "$3"
   printf '%s  %s\n' "$2" "$3" | sha256sum -c -
 }
 fetch_ci_input source_mirrors.cfg c28e6882aa9ebed84fd32586112e5fbfe9684af4e4aaa9942170919a3cbd308e "$mirrors"
