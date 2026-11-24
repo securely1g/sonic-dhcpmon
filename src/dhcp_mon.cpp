@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <event2/thread.h>
 #include <memory>
+#include <exception>
 #include <mutex>
 #include <string>
 #include <unordered_set>
@@ -58,6 +59,8 @@ static const std::chrono::steady_clock::time_point default_time_point{};
 std::shared_ptr<swss::DBConnector> mConfigDbPtr = std::make_shared<swss::DBConnector> ("CONFIG_DB", 0);
 std::shared_ptr<swss::DBConnector> mCountersDbPtr = std::make_shared<swss::DBConnector> ("COUNTERS_DB", 0);
 std::shared_ptr<swss::DBConnector> mStateDbPtr = std::make_shared<swss::DBConnector> ("STATE_DB", 0);
+/** The MUX table shares a non-thread-safe Redis connection across RX threads. */
+std::mutex mux_table_lock;
 std::shared_ptr<swss::Table> mStateDbMuxTablePtr = std::make_shared<swss::Table> (
     mStateDbPtr.get(), "HW_MUX_CABLE_TABLE"
 );
@@ -466,7 +469,7 @@ static void timeout_callback(evutil_socket_t fd, short event, void *arg)
 /**
  * @code db_update_callback(fd, event, arg);
  *
- * @brief periodic timer call back
+ * @brief Publish cached counters and remove stale DB entries; request failure shutdown on a standard exception.
  *
  * @param fd        libevent socket
  * @param event     event triggered
@@ -475,6 +478,7 @@ static void timeout_callback(evutil_socket_t fd, short event, void *arg)
  * @return none
  */
 static void db_update_callback(evutil_socket_t fd, short event, void *arg)
+try
 {
     syslog_debug(LOG_INFO, "Received db update signal");
     syslog_debug(LOG_INFO, "Sync cache counter to DB counter");
@@ -497,6 +501,9 @@ static void db_update_callback(evutil_socket_t fd, short event, void *arg)
     sock_mgr_update_db_counters();
     cleanup_stale_db_counters();
     syslog_debug(LOG_INFO, "Successfully synced cache counter to DB counter");
+} catch (const std::exception &error) {
+    syslog(LOG_ALERT, "Unhandled exception in DB update callback, stopping dhcpmon: %s", error.what());
+    dhcp_mon_stop_on_failure();
 }
 
 /**
@@ -788,12 +795,14 @@ int dhcp_mon_start()
         goto wait_sock_mgr_event_loop;
     }
 
-    rv = 0;
-
-    syslog(LOG_INFO, "Dhcp monitor was running successfully and now it is terminating successfully");
-
 wait_sock_mgr_event_loop:
     sock_mgr_wait_event_loop();
+check_event_loop_exit:
+    if (event_base_got_exit(main_event_mgr->get_base()) &&
+        sock_mgr_event_loop_exited_normally()) {
+        rv = 0;
+        syslog(LOG_INFO, "Dhcp monitor was running successfully and now it is terminating successfully");
+    }
 unregister_main_events:
     main_event_mgr->del_all_events();
 unregister_cache_counter_updater:
@@ -815,6 +824,15 @@ void dhcp_mon_stop()
 {
     syslog(LOG_INFO, "Stopping dhcp monitor");
     sock_mgr_stop_event_loop();
+    event_base_loopexit(main_event_mgr->get_base(), NULL);
+    syslog(LOG_INFO, "Stopped dhcp monitor event loops");
+}
+
+void dhcp_mon_stop_on_failure()
+{
+    syslog(LOG_INFO, "Stopping dhcp monitor on failure");
+    sock_mgr_stop_event_loop_on_failure();
+    event_base_loopbreak(main_event_mgr->get_base());
     event_base_loopexit(main_event_mgr->get_base(), NULL);
     syslog(LOG_INFO, "Stopped dhcp monitor event loops");
 }
